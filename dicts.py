@@ -1,5 +1,6 @@
 REGISTER_DICT = {
     '$zero': '0',
+    '$0': '0',
     '$at': '1',
     '$v0': '2',
     '$v1': '3',
@@ -42,4 +43,3 @@ FIELD_SIZE_DICT = {
     'shamt': 5,
     'funct': 6,
 }
-

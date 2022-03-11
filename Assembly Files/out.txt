@@ -62,48 +62,48 @@ LineType.VARIABLE		varB:	.word	4		# desired inner loop count
 LineType.BLANK		
 LineType.ASSM_DIRECTIVE				.text
 LineType.LABEL_ONLY		main:	
-LineType.I_INSTRUCTION			ori $t0, $0, 0 		# set t0 (i) to zero
+LineType.INVALID			ori $t0, $0, 0 		# set t0 (i) to zero
 LineType.INVALID			la $s2, arrayD 		# get address of arrayD
 LineType.COMMENT			#ori $s0, $0, 3 	# set s0 (a) to 3 (commented out since I think we are supposed to use the variable method instead, could also use move command instead of ori)
 LineType.COMMENT			#ori $s1, $0, 4 	# set s1 (b) to 4 (commented out since I think we are supposed to use the variable method instead, could also use move command instead of ori)
 LineType.COMMENT			# Last 2 lines above using variables instead of immediate values:
 LineType.INVALID			la $t5, varA 		# place the address of A into register t5
-LineType.I_INSTRUCTION			lw $s0, 0($t5) 		# get the outer loop count from varA
+LineType.INVALID			lw $s0, 0($t5) 		# get the outer loop count from varA
 LineType.INVALID			la $t6, varB 		# place the address of B into register t6
-LineType.I_INSTRUCTION			lw $s1, 0($t6) 		# get the inner loop count from varB
+LineType.INVALID			lw $s1, 0($t6) 		# get the inner loop count from varB
 LineType.BLANK			
 LineType.LABEL_ONLY		outer_loop:
 LineType.COMMENT			# Skip/exit loop if condition is not met
 LineType.INVALID			bge $t0, $s0, exit 				# go to exit if i >= a
-LineType.I_INSTRUCTION			ori $t1, $0, 0 					# set t1 (j) to zero
+LineType.INVALID			ori $t1, $0, 0 					# set t1 (j) to zero
 LineType.BLANK		
 LineType.LABEL_ONLY			inner_loop: 
 LineType.COMMENT				# Skip/exit loop if condition is not met
 LineType.INVALID				bge $t1, $s1, inner_exit 	# go to exit if j >= b
 LineType.BLANK				
 LineType.COMMENT				# Compute sum
-LineType.R_INSTRUCTION				add $t2, $t0, $t1			# $t2 = i + j
+LineType.INVALID				add $t2, $t0, $t1			# $t2 = i + j
 LineType.BLANK				
 LineType.COMMENT				# Get address of D[4*j]
-LineType.R_INSTRUCTION				sll $t3, $t1, 2 			# $t3 = byte offset amount (j*4)
-LineType.R_INSTRUCTION				add $t4, $s2, $t3 			# address = $t4 = base address + byte offset
+LineType.INVALID				sll $t3, $t1, 2 			# $t3 = byte offset amount (j*4)
+LineType.INVALID				add $t4, $s2, $t3 			# address = $t4 = base address + byte offset
 LineType.BLANK				
 LineType.COMMENT				# Store at D[4*j]
-LineType.I_INSTRUCTION				sw $t2, 0($t4)				# store $t2 at D[4*j] if j is byte offset or D[j] if you consider it a word offset
+LineType.INVALID				sw $t2, 0($t4)				# store $t2 at D[4*j] if j is byte offset or D[j] if you consider it a word offset
 LineType.BLANK				
 LineType.COMMENT				# Increment j
-LineType.I_INSTRUCTION				addi $t1, $t1, 1
+LineType.INVALID				addi $t1, $t1, 1
 LineType.BLANK				
 LineType.COMMENT				# loop
-LineType.J_INSTRUCTION				j inner_loop
+LineType.INVALID				j inner_loop
 LineType.BLANK			
 LineType.LABEL_ONLY			inner_exit:
 LineType.BLANK			
 LineType.COMMENT			# Increment i
-LineType.I_INSTRUCTION			addi $t0, $t0, 1
+LineType.INVALID			addi $t0, $t0, 1
 LineType.BLANK			
 LineType.COMMENT			# loop
-LineType.J_INSTRUCTION			j outer_loop
+LineType.INVALID			j outer_loop
 LineType.BLANK		
 LineType.LABEL_WITH_INSTR		exit:	addi	$v0, $0, 10	# terminate the program with system call #10
 LineType.INVALID				syscall

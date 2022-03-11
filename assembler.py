@@ -1,3 +1,4 @@
+import dicts
 import helpers
 import re
 
@@ -33,8 +34,6 @@ def assemble(assembly_filename, assembled_filename):
 
 
 from enum import Enum
-
-
 class LineType(Enum):
     BLANK = 0
     COMMENT = 1
@@ -46,6 +45,78 @@ class LineType(Enum):
     I_INSTRUCTION = 7
     J_INSTRUCTION = 8
     INVALID = 9
+
+
+def assemble_instruction(instr_line_list: list):
+    instr_dict = None
+
+    # Get mnemonic portion
+    mnemonic = instr_line_list[0]
+    # Check if mnemonic matches a valid instruction
+    if mnemonic in instructions.instruction_list:
+        instr_dict = instructions.instruction_list[mnemonic]
+    # else check if it is technically an instruction, but not yet supported
+    elif mnemonic in instructions.unsupported_instruction_list:
+        print("Unsupported Instruction: {}".format(mnemonic))
+    else:
+        raise Exception("Invalid Instruction")
+
+    # If valid instruction...
+    if instr_dict is not None:
+        # Aliases
+        instr_type = instr_dict.get("type")
+        instr_opcode = instr_dict.get("opcode")
+        instr_funct = instr_dict.get("funct")
+        instr_format = instr_dict.get("format")
+        # Check if it matches the expected format
+        if instr_type == "R":
+            # Number of fields in instruction line list should equal len(format list)+1
+            if len(instr_line_list) != len(instr_format)+1:
+                print("Error, instruction did not match expected format.")
+                return
+            else:
+                # Instruction contains the right number of fields, make sure each field is valid
+                for i, expctd_format in enumerate(instr_format):
+                    """
+                    Format options are:
+                        - "rs"
+                        - "rt"
+                        - "rd"
+                        - "imm"
+                        - "label"
+                        - "imm(rs)"
+                        - "shamt"
+                    """
+                    # make sure instr_line_list[i+1] is type specified by format
+                    instr_param = instr_line_list[i+1]
+                    if expctd_format in ["rs", "rt", "rd"]:
+                        if instr_param not in dicts.REGISTER_DICT:
+                            print("Error, invalid register specified")
+                            return
+                        else:
+                            #TODO
+                            pass
+                    elif expctd_format == "imm":
+                        pass
+                    elif expctd_format == "label":
+                        pass
+                    elif expctd_format == "imm(rs)":
+                        pass
+                    elif expctd_format == "shamt":
+                        pass
+                    else:
+                        # Should never get here
+                        raise Exception("Invalid format in format list")
+
+        elif instr_type == "I":
+            pass
+        elif instr_type == "J":
+            pass
+        else:
+            # Should never get here
+            raise Exception("Unknown instruction type specified in instruction list")
+    else:
+        print("Invalid Instruction")
 
 
 def get_line_type(line, line_number):
@@ -81,30 +152,17 @@ def get_line_type(line, line_number):
     elif re.search(r"^\s*[a-zA-Z]+(\s+[a-zA-Z]+\w*|(\s+\$.*)+).*", line):
         instruction_line = re.search(r"^\s*[a-zA-Z]+(\s+[a-zA-Z]+\w*|(\s+\$.*)+).*", line).group(0)
         # Split off and discard any comment portion
-        instruction_line_list = instruction_line.split("#")[0]
+        instruction_line = instruction_line.split("#")[0]
         # Split on any whitespace (and discard the whitespace)
         instruction_line_list = instruction_line.split()
-        # Get mnemonic portion
-        mnemonic = instruction_line_list[0]
-        # Check if mnemonic matches a valid instruction
-        if mnemonic in instructions.instructions_list:
-            instr_format = instructions.instructions_list[mnemonic]["format"]
+        # TODO change below
+        assemble_instruction(instruction_line_list)
 
-            if instr_format == "R":
-                line_type = LineType.R_INSTRUCTION
-            elif instr_format == "I":
-                line_type = LineType.I_INSTRUCTION
-            elif instr_format == "J":
-                line_type = LineType.J_INSTRUCTION
-            else:
-                # Should never get here
-                raise Exception("format for instruction in instruction list not valid")
-
-        else:
-            print("Invalid instruction encountered!")
-            print("Line number: ", line_number)
-            print("Line: ", line)
-            line_type = LineType.INVALID
+        # else:
+        # print("Invalid instruction encountered!")
+        # print("Line number: ", line_number)
+        # print("Line: ", line)
+        # line_type = LineType.INVALID
 
     # if it matches the regex pattern below it's a label only
     elif re.search(r"^\s*[a-zA-Z]+\w*:\s*$", line):

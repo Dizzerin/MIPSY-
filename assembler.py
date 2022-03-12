@@ -1,8 +1,49 @@
 import dicts
 import helpers
 import re
-
 import instructions
+from custom_types import LineType
+
+symbol_table = {}
+
+
+def build_symbol_table(i_file):
+    """
+    Scans through the file line by line searching for symbols (labels, variables etc.)
+    and adds them to the symbol table
+    :param i_file: assembly language input file handle (previously opened and ready to read from)
+    :return: None
+    """
+    i_file.seek(0)  # Reset read pointer to top of file
+    for line_number, line in enumerate(i_file):
+        # Try matching the line to a label, a label with an instruction, or a variable
+        label = re.search(dicts.REGEX_DICT["label_only"], line)
+        label_with_instr = re.search(dicts.REGEX_DICT["label_and_instr"], line)
+        variable = re.search(dicts.REGEX_DICT["variable"], line)
+
+        # If the line contains a label:
+        if label is not None:
+            # Add the label and its address (line number) to symbol table
+            # TODO line number is not actual address
+            symbol_table[label.group(0).strip()] = line_number
+
+        # Else if the line contains a label followed by an instruction
+        elif label_with_instr is not None:
+            # Extract label only portion
+            label_portion = label_with_instr.group(0).strip().split(":")[0]
+            # Add the label and its address (line number) to symbol table
+            # TODO line number is not actual address
+            symbol_table[label_portion] = line_number
+
+        # Else if the line contains a variable:
+        elif variable is not None:
+            # TODO handle variables
+            pass
+    return
+
+
+def convert_to_machine_code(i_file, o_file):
+    pass
 
 
 def assemble(assembly_filename, assembled_filename):
@@ -24,27 +65,10 @@ def assemble(assembly_filename, assembled_filename):
                 else:
 
                     # Scan file once, get labels
-                    for line_number, line in enumerate(i_file):
-                        o_file.write(str(get_line_type(line, line_number)) + "\t\t" + str(line))
+                    build_symbol_table(i_file)
 
-                    # Scan file again, assemble
-                    # i_file.seek(0)  # Reset read pointer to top of file
-                    # for line in i_file:
-                    #     print(line, end="")
-
-
-from enum import Enum
-class LineType(Enum):
-    BLANK = 0
-    COMMENT = 1
-    ASSM_DIRECTIVE = 2
-    LABEL_ONLY = 3
-    LABEL_WITH_INSTR = 4
-    VARIABLE = 5
-    R_INSTRUCTION = 6
-    I_INSTRUCTION = 7
-    J_INSTRUCTION = 8
-    INVALID = 9
+                    # Assemble file
+                    convert_to_machine_code(i_file, o_file)
 
 
 def assemble_instruction(instr_line_list: list):
@@ -144,13 +168,13 @@ def get_line_type(line, line_number):
         line_type = LineType.BLANK
 
     # if first non-whitespace char is "#" it's a comment
-    elif re.search(r"^\s*#.*", line):
+    elif re.search(dicts.REGEX_DICT["comment"], line):
         line_type = LineType.COMMENT
 
     # Line below matches any line that starts like an instruction
     # The full validity of the instruction has yet to be verified
-    elif re.search(r"^\s*[a-zA-Z]+(\s+[a-zA-Z]+\w*|(\s+\$.*)+).*", line):
-        instruction_line = re.search(r"^\s*[a-zA-Z]+(\s+[a-zA-Z]+\w*|(\s+\$.*)+).*", line).group(0)
+    elif re.search(dicts.REGEX_DICT["instruction"], line):
+        instruction_line = re.search(dicts.REGEX_DICT["instruction"], line).group(0)
         # Split off and discard any comment portion
         instruction_line = instruction_line.split("#")[0]
         # Split on any whitespace (and discard the whitespace)
@@ -165,20 +189,20 @@ def get_line_type(line, line_number):
         # line_type = LineType.INVALID
 
     # if it matches the regex pattern below it's a label only
-    elif re.search(r"^\s*[a-zA-Z]+\w*:\s*$", line):
+    elif re.search(dicts.REGEX_DICT["label_only"], line):
         line_type = LineType.LABEL_ONLY
 
     # if it matches the regex pattern below it's a variable
-    elif re.search(r"^\s*[a-zA-Z]+\w*:\s+\.[a-zA-Z]\w*\s+\d+", line):
+    elif re.search(dicts.REGEX_DICT["variable"], line):
         line_type = LineType.VARIABLE
 
     # if it matches the regex pattern below it is a label most likely followed by an instruction
     # however the validity of the instruction portion has yet to be verified
-    elif re.search(r"^\s*[a-zA-Z]+\w*:\s+[a-zA-Z]+\s+[a-zA-Z$]", line):
+    elif re.search(dicts.REGEX_DICT["label_and_instr"], line):
         line_type = LineType.LABEL_WITH_INSTR
 
     # if first non-whitespace char is "." and it's followed by an any number of alphanumeric characters it's an assembler directive
-    elif re.search(r"^\s*\.\w+", line):
+    elif re.search(dicts.REGEX_DICT["directive"], line):
         line_type = LineType.ASSM_DIRECTIVE
 
     else:

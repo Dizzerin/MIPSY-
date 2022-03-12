@@ -1,3 +1,7 @@
+import re
+
+
+# Dictionary of all valid registers and their corresponding values
 REGISTER_DICT = {
     '$zero': '0',
     '$0': '0',
@@ -34,12 +38,41 @@ REGISTER_DICT = {
     '$ra': '31'
 }
 
-FIELD_SIZE_DICT = {
-    'opcode': 6,
-    'rt': 5,
-    'rs': 5,
-    'rd': 5,
-    'imm': 16,
-    'shamt': 5,
-    'funct': 6,
+
+# Dictionary of regex search patterns to identify the follow line types
+REGEX_DICT = {
+    # Matches any line that starts with any amount of whitespace and then a "#"
+    # (matches full line)
+    'comment': re.compile(r"^\s*#.*"),
+
+    # Matches any line that starts like an instruction
+    # (matches full line)
+    'instruction': re.compile(r"^\s*[a-zA-Z]+(\s+[a-zA-Z]+\w*|(\s+\$.*)+).*"),
+
+    # Matches any line that contains just a label with any amount of whitespace on either end but nothing else
+    # (matches full line)
+    'label_only': re.compile(r"^\s*[a-zA-Z]+\w*:\s*$"),
+
+    # Matches any line that contains a label followed by whitespace, a-Z text, whitespace, and then any text
+    # (matches full line)
+    'label_and_instr': re.compile(r"^\s*[a-zA-Z]+\w*:\s+[a-zA-Z]+\s+.+"),
+
+    # Matches any line of the form "something: .something digits" where digits are any number of digits
+    # (does not match full line, matches up to the end of the digits section)
+    'variable': re.compile(r"^\s*[a-zA-Z]+\w*:\s+\.[a-zA-Z]\w*\s+\d+"),
+
+    # Matches any line of the form ".something"
+    # (does not match full line, only to end of word)
+    'directive': re.compile(r"^\s*\.\w+")
 }
+
+
+# FIELD_SIZE_DICT = {
+#     'opcode': 6,
+#     'rt': 5,
+#     'rs': 5,
+#     'rd': 5,
+#     'imm': 16,
+#     'shamt': 5,
+#     'funct': 6,
+# }

@@ -1,48 +1,84 @@
-import dicts
-import helpers
-import re
-import instructions
 from custom_types import LineType
+import instructions
+import helpers
+import dicts
+import re
 
+# Dictionary mapping labels to their corresponding byte addresses
 symbol_table = {}
 
+# Dictionary mapping variables to their byte addresses
+# (points to start of data if multiple bytes)
+variable_table = {}
 
-def build_symbol_table(i_file):
+# List containing the type of each line in the assembly file
+# possible types are given in the LineType enum
+# indexed by line number starting with 0 as first line
+line_type_list = []
+
+# Random byte memory address where the first instruction will be placed in memory
+# Can be changed to anything, but note that it should be word aligned since
+# each instruction occupies 1 word
+START_ADDRESS = 7996
+
+
+# TODO remove o_file when no longer testing
+def process_first_pass(i_file, o_file):
     """
     Scans through the file line by line searching for symbols (labels, variables etc.)
     and adds them to the symbol table
     :param i_file: assembly language input file handle (previously opened and ready to read from)
     :return: None
+    :raises Exception if a line is invalid
     """
+    # Initialize current instruction address counter variable (in bytes, each instruction is 4 bytes)
+    # (less 4 because it will be incremented upon reaching the first valid instruction)
+    current_instruction_address = START_ADDRESS-4
     i_file.seek(0)  # Reset read pointer to top of file
     for line_number, line in enumerate(i_file):
-        # Try matching the line to a label, a label with an instruction, or a variable
-        label = re.search(dicts.REGEX_DICT["label_only"], line)
-        label_with_instr = re.search(dicts.REGEX_DICT["label_and_instr"], line)
-        variable = re.search(dicts.REGEX_DICT["variable"], line)
 
-        # If the line contains a label:
-        if label is not None:
-            # Add the label and its address (line number) to symbol table
-            # TODO line number is not actual address
-            symbol_table[label.group(0).strip()] = line_number
+        # Determine line type and fill out line_type_table
+        line_type = helpers.get_line_type(line)
+        line_type_list.append(line_type)
 
-        # Else if the line contains a label followed by an instruction
-        elif label_with_instr is not None:
-            # Extract label only portion
-            label_portion = label_with_instr.group(0).strip().split(":")[0]
-            # Add the label and its address (line number) to symbol table
-            # TODO line number is not actual address
-            symbol_table[label_portion] = line_number
+        # TODO remove Temp
+        o_file.write("{} {}     {}".format(line_number, line_type, line))
 
-        # Else if the line contains a variable:
-        elif variable is not None:
-            # TODO handle variables
-            pass
+        # Catch and report invalid lines at this stage
+        if line_type == LineType.INVALID:
+            raise Exception("Error invalid line encountered in assembly file\n"
+                            "Line number: ", line_number+1, "\n",               # +1 since first line is 0
+                            "Line: ", line)
+
+        # Increment current instruction address if valid instruction
+        if line_type in [LineType.R_INSTRUCTION, LineType.I_INSTRUCTION, LineType.J_INSTRUCTION,
+                         LineType.LABEL_WITH_R_INSTR, LineType.LABEL_WITH_I_INSTR, LineType.LABEL_WITH_J_INSTR]:
+            # Increment instruction address counter by 4 bytes (since each instruction is 1 word)
+            current_instruction_address += 4
+
+        # Fill out variable table
+        if line_type == LineType.VARIABLE:
+            variable = re.search(dicts.REGEX_DICT["variable"], line)
+            # TODO
+
+        # Fill out symbol/label table
+        if line_type in [LineType.LABEL_ONLY, LineType.LABEL_WITH_U_INSTR, LineType.LABEL_WITH_R_INSTR,
+                         LineType.LABEL_WITH_I_INSTR, LineType.LABEL_WITH_J_INSTR]:
+            # Isolate label portion (remove the instruction or comment portions) and strip whitespace
+            label = line.split(":", 1)[0].strip()  # Split on the ":", max of 1 split, keep the first portion
+
+            # Add label and its associated instruction address to symbol table
+            if line_type == LineType.LABEL_ONLY:
+                # Since it is a label only, the associated instruction is the next instruction, so add 4 bytes
+                symbol_table[label] = current_instruction_address + 4
+            else:
+                # Since it is a label with an instruction, the associated instruction is on the same line, so no offset
+                symbol_table[label] = current_instruction_address
     return
 
 
-def convert_to_machine_code(i_file, o_file):
+def process_second_pass(i_file, o_file):
+    # TODO
     pass
 
 
@@ -63,15 +99,20 @@ def assemble(assembly_filename, assembled_filename):
                     print("Error occurred creating output file.")
                     print("Error: ", o_error)
                 else:
+                    # Begin assembly process
+                    try:
+                        # Perform first pass (build symbol table etc.)
+                        process_first_pass(i_file, o_file)
 
-                    # Scan file once, get labels
-                    build_symbol_table(i_file)
-
-                    # Assemble file
-                    convert_to_machine_code(i_file, o_file)
+                        # Perform second pass (assemble file)
+                        process_second_pass(i_file, o_file)
+                    except Exception as error:
+                        print(error)
+    return
 
 
 def assemble_instruction(instr_line_list: list):
+    # TODO probably split this into 3 different functions: assemble, R, J, and I
     instr_dict = None
 
     # Get mnemonic portion
@@ -142,73 +183,4 @@ def assemble_instruction(instr_line_list: list):
     else:
         print("Invalid Instruction")
 
-
-def get_line_type(line, line_number):
-    """
-    Parses and tokenizes each line
-    :param line: assembly file line
-    :param line_number: line number
-    :return:
-    """
-    """
-    Line Type Options
-        - blank
-        - comment
-        - assembler directive
-        - label
-            - label only
-            - label and instruction
-            - variable
-        - instruction
-        - invalid line
-    """
-    line_type = LineType.INVALID
-
-    if line.strip() == "":
-        line_type = LineType.BLANK
-
-    # if first non-whitespace char is "#" it's a comment
-    elif re.search(dicts.REGEX_DICT["comment"], line):
-        line_type = LineType.COMMENT
-
-    # Line below matches any line that starts like an instruction
-    # The full validity of the instruction has yet to be verified
-    elif re.search(dicts.REGEX_DICT["instruction"], line):
-        instruction_line = re.search(dicts.REGEX_DICT["instruction"], line).group(0)
-        # Split off and discard any comment portion
-        instruction_line = instruction_line.split("#")[0]
-        # Split on any whitespace (and discard the whitespace)
-        instruction_line_list = instruction_line.split()
-        # TODO change below
-        assemble_instruction(instruction_line_list)
-
-        # else:
-        # print("Invalid instruction encountered!")
-        # print("Line number: ", line_number)
-        # print("Line: ", line)
-        # line_type = LineType.INVALID
-
-    # if it matches the regex pattern below it's a label only
-    elif re.search(dicts.REGEX_DICT["label_only"], line):
-        line_type = LineType.LABEL_ONLY
-
-    # if it matches the regex pattern below it's a variable
-    elif re.search(dicts.REGEX_DICT["variable"], line):
-        line_type = LineType.VARIABLE
-
-    # if it matches the regex pattern below it is a label most likely followed by an instruction
-    # however the validity of the instruction portion has yet to be verified
-    elif re.search(dicts.REGEX_DICT["label_and_instr"], line):
-        line_type = LineType.LABEL_WITH_INSTR
-
-    # if first non-whitespace char is "." and it's followed by an any number of alphanumeric characters it's an assembler directive
-    elif re.search(dicts.REGEX_DICT["directive"], line):
-        line_type = LineType.ASSM_DIRECTIVE
-
-    else:
-        print("Error invalid line type encountered")
-        print("Line number: ", line_number)
-        print("Line: ", line)
-        line_type = LineType.INVALID
-
-    return line_type
+    return

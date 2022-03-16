@@ -77,7 +77,7 @@ outer_loop:
 	bge $t0, $s0, exit 				# go to exit if i >= a
 	ori $t1, $0, 0 					# set t1 (j) to zero
 
-	inner_loop: 
+	inner_loop:
 		# Skip/exit loop if condition is not met
 		bge $t1, $s1, inner_exit 	# go to exit if j >= b
 		
@@ -91,7 +91,7 @@ outer_loop:
 		# Store at D[4*j]
 		sw $t2, 0($t4)				# store $t2 at D[4*j] if j is byte offset or D[j] if you consider it a word offset
 		
-		# Increment j
+		# Increment j				# lots # of # comment # symbols # # # #
 		addi $t1, $t1, 1
 		
 		# loop
@@ -105,6 +105,11 @@ outer_loop:
 	# loop
 	j outer_loop
 
-exit:	addi	$v0, $0, 10	# terminate the program with system call #10
-		syscall
+labelwithR: add $s0, $s0, $s0
+labelwithI: addi $s0, $s0, 1
+labelwithJ: j labelHere
+labelwithU:	sxs					# comment on line with label and instruction
 
+exit:	addi	$v0, $0, 10	# terminate the program with system call #10
+	syscall
+labelwithComment: # This is considered invalid since the regex doesn't match this as a label only

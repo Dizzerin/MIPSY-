@@ -1,20 +1,9 @@
+import custom_types
 from custom_types import LineType
-import instructions
+from instruction_assemblers import *
 import helpers
 import dicts
 import re
-
-# Dictionary mapping labels to their corresponding byte addresses
-symbol_table = {}
-
-# Dictionary mapping variables to their byte addresses
-# (points to start of data if multiple bytes)
-variable_table = {}
-
-# List containing the type of each line in the assembly file
-# possible types are given in the LineType enum
-# indexed by line number starting with 0 as first line
-line_type_list = []
 
 # Random byte memory address where the first instruction will be placed in memory
 # Can be changed to anything, but note that it should be word aligned since
@@ -25,19 +14,33 @@ START_ADDRESS = 7996
 # TODO remove o_file when no longer testing
 def process_first_pass(i_file, o_file):
     """
-    Scans through the file line by line searching for symbols (labels, variables etc.)
-    and adds them to the symbol table
+    Scans through the file line by line
+    determines each line's type and saves it to the respective index in the line_type_list,
+    if the line contains a symbol/label, it will add it to the symbol table with its proper address
+    TODO: also add variables to the variable table
     :param i_file: assembly language input file handle (previously opened and ready to read from)
-    :return: None
+    :return: Tuple (symbol table, variable table, line type list)
     :raises Exception if a line is invalid
     """
+    # Dictionary mapping labels to their corresponding byte addresses
+    symbol_table = {}
+
+    # Dictionary mapping variables to their byte addresses
+    # (points to start of data if multiple bytes)
+    variable_table = {}
+
+    # List containing the type of each line in the assembly file
+    # possible types are given in the LineType enum
+    # indexed by line number starting with 0 as first line
+    line_type_list = []
+
     # Initialize current instruction address counter variable (in bytes, each instruction is 4 bytes)
     # (less 4 because it will be incremented upon reaching the first valid instruction)
     current_instruction_address = START_ADDRESS-4
     i_file.seek(0)  # Reset read pointer to top of file
     for line_number, line in enumerate(i_file):
 
-        # Determine line type and fill out line_type_table
+        # Determine line type and fill out line_type_list
         line_type = helpers.get_line_type(line)
         line_type_list.append(line_type)
 
@@ -51,19 +54,17 @@ def process_first_pass(i_file, o_file):
                             "Line: ", line)
 
         # Increment current instruction address if valid instruction
-        if line_type in [LineType.R_INSTRUCTION, LineType.I_INSTRUCTION, LineType.J_INSTRUCTION,
-                         LineType.LABEL_WITH_R_INSTR, LineType.LABEL_WITH_I_INSTR, LineType.LABEL_WITH_J_INSTR]:
+        if line_type in custom_types.ALL_INSTRUCTIONAL_TYPES:
             # Increment instruction address counter by 4 bytes (since each instruction is 1 word)
             current_instruction_address += 4
 
         # Fill out variable table
         if line_type == LineType.VARIABLE:
             variable = re.search(dicts.REGEX_DICT["variable"], line)
-            # TODO
+            # TODO fill out variable table (support variables)
 
         # Fill out symbol/label table
-        if line_type in [LineType.LABEL_ONLY, LineType.LABEL_WITH_U_INSTR, LineType.LABEL_WITH_R_INSTR,
-                         LineType.LABEL_WITH_I_INSTR, LineType.LABEL_WITH_J_INSTR]:
+        if line_type in custom_types.ALL_LABEL_TYPES:
             # Isolate label portion (remove the instruction or comment portions) and strip whitespace
             label = line.split(":", 1)[0].strip()  # Split on the ":", max of 1 split, keep the first portion
 
@@ -74,15 +75,42 @@ def process_first_pass(i_file, o_file):
             else:
                 # Since it is a label with an instruction, the associated instruction is on the same line, so no offset
                 symbol_table[label] = current_instruction_address
-    return
+
+    return symbol_table, variable_table, line_type_list
 
 
-def process_second_pass(i_file, o_file):
-    # TODO
-    pass
+def process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_list):
+    # Read through line_type_list and only operate on lines that contain instructions
+    for line_number, line_type in enumerate(line_type_list):
+        # For every instruction line...
+        if line_type in custom_types.ALL_INSTRUCTIONAL_TYPES:
+            # Goto that line in the input file
+            i_file.seek(line_number)
+            # Grab the line from the file
+            line = i_file.readline()
+            # Set a flag indicating if the instruction starts with a label on the same line
+            with_label = line_type in custom_types.ALL_INSTRUCTIONAL_LABEL_TYPES
+            # Tokenize instruction
+            tokenized_instr_list = tokenize_instruction(line, with_label)
+            # Verify instruction
+            verify_instruction_tokens(tokenized_instr_list, symbol_table)
+            # Assemble instruction
+            # TODO call appropriate assembler (R type, I type.. etc.)
+
+            # Write to output file(s)
 
 
 def assemble(assembly_filename, assembled_filename):
+    """
+    This function is primarily responsible for the file handling aspects surrounding the assembly process.
+    It verifies the input file can be read and output file can be written to etc.
+    opens the input file and creates and opens the output file with error handling
+    and then passes the opened and validated file handles to the first pass and second pass functions
+    It also catches the exceptions that may occur during the assembly process and prints them
+    :param assembly_filename: input filename (or full path if not in the same directory) (include file extension)
+    :param assembled_filename: output filename (or full path if not in the same directory) (don't include extension)
+    :return: None
+    """
     # Open input file
     with helpers.open_with_error(assembly_filename, "r") as (i_file, i_error):
         # Check for error opening input file
@@ -101,86 +129,12 @@ def assemble(assembly_filename, assembled_filename):
                 else:
                     # Begin assembly process
                     try:
-                        # Perform first pass (build symbol table etc.)
-                        process_first_pass(i_file, o_file)
+                        # Perform first pass (build symbol table, determine line types, etc.)
+                        symbol_table, variable_table, line_type_list = process_first_pass(i_file, o_file)
 
                         # Perform second pass (assemble file)
-                        process_second_pass(i_file, o_file)
+                        process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_list)
                     except Exception as error:
                         print(error)
     return
 
-
-def assemble_instruction(instr_line_list: list):
-    # TODO probably split this into 3 different functions: assemble, R, J, and I
-    instr_dict = None
-
-    # Get mnemonic portion
-    mnemonic = instr_line_list[0]
-    # Check if mnemonic matches a valid instruction
-    if mnemonic in instructions.instruction_list:
-        instr_dict = instructions.instruction_list[mnemonic]
-    # else check if it is technically an instruction, but not yet supported
-    elif mnemonic in instructions.unsupported_instruction_list:
-        print("Unsupported Instruction: {}".format(mnemonic))
-    else:
-        raise Exception("Invalid Instruction")
-
-    # If valid instruction...
-    if instr_dict is not None:
-        # Aliases
-        instr_type = instr_dict.get("type")
-        instr_opcode = instr_dict.get("opcode")
-        instr_funct = instr_dict.get("funct")
-        instr_format = instr_dict.get("format")
-        # Check if it matches the expected format
-        if instr_type == "R":
-            # Number of fields in instruction line list should equal len(format list)+1
-            if len(instr_line_list) != len(instr_format)+1:
-                print("Error, instruction did not match expected format.")
-                return
-            else:
-                # Instruction contains the right number of fields, make sure each field is valid
-                for i, expctd_format in enumerate(instr_format):
-                    """
-                    Format options are:
-                        - "rs"
-                        - "rt"
-                        - "rd"
-                        - "imm"
-                        - "label"
-                        - "imm(rs)"
-                        - "shamt"
-                    """
-                    # make sure instr_line_list[i+1] is type specified by format
-                    instr_param = instr_line_list[i+1]
-                    if expctd_format in ["rs", "rt", "rd"]:
-                        if instr_param not in dicts.REGISTER_DICT:
-                            print("Error, invalid register specified")
-                            return
-                        else:
-                            #TODO
-                            pass
-                    elif expctd_format == "imm":
-                        pass
-                    elif expctd_format == "label":
-                        pass
-                    elif expctd_format == "imm(rs)":
-                        pass
-                    elif expctd_format == "shamt":
-                        pass
-                    else:
-                        # Should never get here
-                        raise Exception("Invalid format in format list")
-
-        elif instr_type == "I":
-            pass
-        elif instr_type == "J":
-            pass
-        else:
-            # Should never get here
-            raise Exception("Unknown instruction type specified in instruction list")
-    else:
-        print("Invalid Instruction")
-
-    return

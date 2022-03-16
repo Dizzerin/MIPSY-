@@ -1,0 +1,8 @@
+Change regex so instructions with no arguments work (i.e. syscall)
+^ can do this by removing all regex related checking on instruction lines and just always assume any line that doesn't
+match any of the other types is an instruction,
+then let the program lookup that line later and see if it is a valid instruction, this is currently done anyways
+would also need to make sure the regex matching a label with an instruction does match something like "label: syscall"
+quickest way to do this is make the regex instruction match any line that starts with a-Z, but would need to make sure
+that check is done last, since labels start the same way
+

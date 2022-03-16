@@ -6,7 +6,7 @@
 5 LineType.COMMENT     #   Processor:   	MIPS
 6 LineType.COMMENT     #   Notes:       	For execution using the SPIM simulator
 7 LineType.COMMENT     #
-8 LineType.COMMENT     #	This program SUCESSFULLY implements this C code:
+8 LineType.COMMENT     #	This program SUCCESSFULLY implements this C code:
 9 LineType.COMMENT     #
 10 LineType.COMMENT     #	for(i=0;i<a;i++){
 11 LineType.COMMENT     #		for(j=0;j<b;j++){

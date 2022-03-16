@@ -6,7 +6,7 @@
 #   Processor:   	MIPS
 #   Notes:       	For execution using the SPIM simulator
 #
-#	This program SUCESSFULLY implements this C code:
+#	This program SUCCESSFULLY implements this C code:
 #
 #	for(i=0;i<a;i++){
 #		for(j=0;j<b;j++){

@@ -146,7 +146,8 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
 
         # Verify label is valid
         # TODO support numeric labels?
-        # TODO verify label is divisible by 4
+        #   also verify label is divisible by 4 (only needs to be implemented if the above is implemented)
+        #   as it currently stands, this will always be the case
         if token_type == "label":
             if current_token not in symbol_table:
                 raise Exception(f"Label \"{current_token}\" could not be located in symbol table")
@@ -208,15 +209,16 @@ def assemble_r_instruction(tokenized_instr_list, instr_format_dict):
     return " ".join([x[2:] for x in [opcode, rs, rt, rd, shamt, funct]])
 
 
-def assemble_i_instruction(tokenized_instr_list, instr_format_dict):
+def assemble_i_instruction(tokenized_instr_list, instr_format_dict, symbol_table, current_instruction_address):
     """
     Assembles the provided instruction (converts it to binary etc.)
 
     I Format Instructions
 
     Written format:
-    mnemonic    rt, imm(rs)     <-- for most I type
-    mnemonic    rs, rt, imm     <-- for beq and bne
+    mnemonic    rt, imm(rs)
+    mnemonic    rs, rt, imm
+    mnemonic    rs, rt, label
 
     Assembled format:
     opcode  rs  rt  IMM
@@ -224,14 +226,12 @@ def assemble_i_instruction(tokenized_instr_list, instr_format_dict):
 
     :param tokenized_instr_list: tokenized instruction list (list)
     :param instr_format_dict: dictionary from instruction_list containing the formatting info for the given instruction
+    :param symbol_table: dictionary mapping symbols/labels to their respective addresses
+    :param current_instruction_address: memory address of the current instruction being passed in (int)
     :return: binary string containing the final 32 bit instruction (string) (not prefixed with "0b")
         The string will be of the form: "000000 00000 00000 0000000000000000"
         can easily be changed to "00000000000000000000000000000000"
     """
-    # TODO handle "imm(rs)" format
-    # TODO compute branch addresses for branch instructions
-    # TODO handle negative immediates properly (use 2's complement)
-
     # Initialize and convert all parameters to binary strings
     # with the proper length
     opcode = sign_extend(bin(instr_format_dict.get("opcode")), 6)
@@ -255,6 +255,27 @@ def assemble_i_instruction(tokenized_instr_list, instr_format_dict):
                 rt = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
             case "imm":
                 imm = sign_extend(bin(int(current_token)), 16)
+            case "imm(rs)":
+                # Separate and isolate the imm and rs portions
+                split_string = current_token.split("(")
+                imm = split_string[0]
+                rs = split_string[1].replace(")", "")
+                # Convert to final values
+                imm = sign_extend(bin(int(imm)), 16)
+                rs = sign_extend(bin(dicts.REGISTER_DICT[rs]), 5)
+            case "label":
+                # Get the address the label portion points to from symbol table
+                address = symbol_table[current_token]
+
+                # Computer proper branch address
+                # Note: The immediate value stored for a branch instruction is 2's complement, word aligned, and
+                # used as a PC relative address, and the PC is incremented early, so its really PC+4 (or the next
+                # instruction address.
+                # The stored address is calculated as: x = (TargetAddress - NextAddress)/4
+                # When used, the stored address is multiplied by four and added to the PC+4
+                address = int((address - (current_instruction_address+4))/4)
+                # Convert address to binary string, and extend to proper length
+                imm = sign_extend(bin(address), 16)
 
     # Return final binary string
     # Note: slicing because bin() results in a string starting with "0b"...

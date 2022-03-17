@@ -39,8 +39,9 @@ instruction_list["xor"] = {"type": "R", "opcode": 0, "funct": 38, "format": ["rd
 I Format Instructions
 
 Written format: 
-mnemonic    rt, imm(rs)     <-- for most I type
-mnemonic    rs, rt, imm     <-- for beq and bne
+    mnemonic    rt, imm(rs)
+    mnemonic    rs, rt, imm
+    mnemonic    rs, rt, label
 
 Assembled format:
 opcode  rs  rt  IMM

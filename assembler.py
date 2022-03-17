@@ -13,11 +13,13 @@ START_ADDRESS = 7996
 def process_first_pass(i_file):
     """
     Scans through the file line by line
-    determines each line's type and saves it to the respective index in the line_type_list,
+    determines each line's type and saves it to the respective index in the line_type_list (along with its memory
+    address if the type is an instruction)
     if the line contains a symbol/label, it will add it to the symbol table with its proper address
     TODO: also add variables to the variable table
     :param i_file: assembly language input file handle (previously opened and ready to read from)
     :return: Tuple (symbol table, variable table, line type list)
+        line type list contains tuples as well (LineType, memory_address if type is instruction)
     :raises Exception if a line is invalid
     """
     # Dictionary mapping labels to their corresponding byte addresses
@@ -27,8 +29,9 @@ def process_first_pass(i_file):
     # (points to start of data if multiple bytes)
     variable_table = {}
 
-    # List containing the type of each line in the assembly file
-    # possible types are given in the LineType enum
+    # List of tuples containing the type of each line in the assembly file and
+    # the instruction address in memory if the line is an instruction (None otherwise)
+    # possible line types are given in the LineType enum
     # indexed by line number starting with 0 as first line
     line_type_list = []
 
@@ -38,9 +41,8 @@ def process_first_pass(i_file):
     i_file.seek(0)  # Reset read pointer to top of file
     for line_number, line in enumerate(i_file):
 
-        # Determine line type and fill out line_type_list
+        # Determine line type
         line_type = helpers.get_line_type(line)
-        line_type_list.append(line_type)
 
         # Catch and report invalid lines at this stage
         if line_type == LineType.INVALID:
@@ -52,6 +54,10 @@ def process_first_pass(i_file):
         if line_type in custom_types.ALL_INSTRUCTIONAL_TYPES:
             # Increment instruction address counter by 4 bytes (since each instruction is 1 word)
             current_instruction_address += 4
+        # Fill out line type list
+            line_type_list.append((line_type, current_instruction_address))
+        else:
+            line_type_list.append((line_type, None))
 
         # Fill out variable table
         if line_type == LineType.VARIABLE:
@@ -80,7 +86,7 @@ def process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_
     i_file_data = i_file.readlines()    # Read all the lines in the file (can't index to a specific line sadly)
 
     # Read through line_type_list in order to only operate on lines that contain instructions
-    for line_number, line_type in enumerate(line_type_list):
+    for line_number, (line_type, current_instruction_address) in enumerate(line_type_list):
         # For every instruction line...
         if line_type in custom_types.ALL_INSTRUCTIONAL_TYPES:
             # Grab the line from the file
@@ -97,7 +103,8 @@ def process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_
             if line_type in [LineType.R_INSTRUCTION, LineType.LABEL_WITH_R_INSTR]:
                 assembled_instr_str = assemble_r_instruction(tokenized_instr_list, instr_format_dict)
             if line_type in [LineType.I_INSTRUCTION, LineType.LABEL_WITH_I_INSTR]:
-                assembled_instr_str = assemble_i_instruction(tokenized_instr_list, instr_format_dict)
+                assembled_instr_str = assemble_i_instruction(tokenized_instr_list, instr_format_dict, symbol_table,
+                                                             current_instruction_address)
             if line_type in [LineType.J_INSTRUCTION, LineType.LABEL_WITH_J_INSTR]:
                 assembled_instr_str = assemble_j_instruction(tokenized_instr_list, instr_format_dict, symbol_table)
 

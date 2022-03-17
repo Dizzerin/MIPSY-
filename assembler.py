@@ -132,7 +132,7 @@ def assemble(assembly_filename, assembled_filename):
         else:
 
             # Create output file
-            # TODO change mode to "x" to prevent overwriting files
+            # Note: If you want to prevent overwriting files change mode to "x"
             with helpers.open_with_error(assembled_filename, "w") as (o_file, o_error):
                 # Check for error creating output file
                 if o_error:

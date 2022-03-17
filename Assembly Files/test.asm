@@ -7,7 +7,7 @@ label1:
 	bne $s0, $s1, label2
 	sll $t2, $s0, 4
 	j label1
-	# j 2000 # TODO need to support this type of jump
+	# j 2000 # TODO support this type of jump
 label2:
 	jr $ra
 	jal label1

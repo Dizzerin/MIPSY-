@@ -104,7 +104,7 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
         # break this up into two parts that then both get verified separately
         if token_type == "imm(rs)":
             special_case = True
-            # TODO
+            # TODO verify token matches expected format with special "imm(rs)" format
             # Verify current token matches expected format
             # Break up the current token into its two parts
 

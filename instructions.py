@@ -4,10 +4,10 @@ instruction_list = {}
 """
 R Format Instructions
 
-Written: 
+Written format: 
 mnemonic   rd, rs, rt
 
-Assembled:
+Assembled format:
 opcode  rs  rt  rd  shamt   funct
 6       5   5   5   5       6
 """
@@ -38,11 +38,11 @@ instruction_list["xor"] = {"type": "R", "opcode": 0, "funct": 38, "format": ["rd
 """
 I Format Instructions
 
-Written: 
-mnemonic    rt, IMM(rs)     <-- for most I type
-mnemonic    rs, rt, IMM     <-- for beq and bne
+Written format: 
+mnemonic    rt, imm(rs)     <-- for most I type
+mnemonic    rs, rt, imm     <-- for beq and bne
 
-Assembled:
+Assembled format:
 opcode  rs  rt  IMM
 6       5   5   16 
 """
@@ -67,10 +67,10 @@ instruction_list["sw"] = {"type": "I", "opcode": 43, "funct": None, "format": ["
 """
 J Format Instructions
 
-Written: 
+Written format: 
 mnemonic   label
 
-Assembled:
+Assembled format:
 opcode  address
 6       26
 """

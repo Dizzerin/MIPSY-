@@ -1,11 +1,4 @@
 ########################################################################
-#   Description:	Problem 2.25 in MIPS
-#   Filename:		Caleb_Nelson_CPTR_380_HW_7
-#   Author:      	Caleb Nelson
-#   Version:     	1/25/22
-#   Processor:   	MIPS
-#   Notes:       	For execution using the SPIM simulator
-#
 #	This program SUCCESSFULLY implements this C code:
 #
 #	for(i=0;i<a;i++){
@@ -64,8 +57,6 @@ varB:	.word	4		# desired inner loop count
 main:	
 	ori $t0, $0, 0 		# set t0 (i) to zero
 	la $s2, arrayD 		# get address of arrayD
-	#ori $s0, $0, 3 	# set s0 (a) to 3 (commented out since I think we are supposed to use the variable method instead, could also use move command instead of ori)
-	#ori $s1, $0, 4 	# set s1 (b) to 4 (commented out since I think we are supposed to use the variable method instead, could also use move command instead of ori)
 	# Last 2 lines above using variables instead of immediate values:
 	la $t5, varA 		# place the address of A into register t5
 	lw $s0, 0($t5) 		# get the outer loop count from varA
@@ -107,9 +98,11 @@ outer_loop:
 
 labelwithR: add $s0, $s0, $s0
 labelwithI: addi $s0, $s0, 1
-labelwithJ: j labelHere
+labelwithJ: j main				# test
 labelwithU:	sxs					# comment on line with label and instruction
+# This is not supported yet label123:						# test2
+# thisIsNotALabel:
 
 exit:	addi	$v0, $0, 10	# terminate the program with system call #10
-	syscall
-labelwithComment: # This is considered invalid since the regex doesn't match this as a label only
+#	syscall
+#labelwithComment: # This is considered invalid since the regex doesn't match this as a label only

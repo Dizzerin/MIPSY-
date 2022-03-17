@@ -1,6 +1,6 @@
 from custom_types import LineType
 import instructions
-import helpers
+from helpers import sign_extend
 import dicts
 import re
 
@@ -26,7 +26,7 @@ def tokenize_instruction(line, with_label):
     # Split off and discard any trailing comment portion
     instruction = instruction.split("#", 1)[0]
     # Remove any commas
-    instruction = instruction.remove(",")
+    instruction = instruction.replace(",", "")
     # Split on any whitespace (and discard the whitespace, no need for additional trimming)
     tokenized_instr_list = instruction.split()
 
@@ -111,12 +111,13 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
         # Verify registers are valid
         if token_type in ["rd", "rs", "rt"]:
             if current_token not in dicts.REGISTER_DICT:
-                raise Exception("Register value was expected but not supplied.")
+                raise Exception(f"Provided register value \"{current_token}\" is not a valid register")
 
         # Verify destination register rd is not a protected/reserved register
         if token_type == "rd":
             if current_token in ["$0", "$zero", "$at", "$k0", "$k1"]:
-                raise Exception("Instruction attempted to write to a projected/reserved register!")
+                raise Exception(f"Instruction attempted to write to \"{current_token}\" which is a "
+                                f"projected/reserved register")
         # TODO same as above, but for cases when the destination register is not rd
 
         # Verify immediate value is valid
@@ -125,11 +126,11 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
             try:
                 current_token = int(current_token)
             except ValueError:
-                raise Exception("Immediate value is not numeric")
+                raise Exception(f"Immediate value \"{current_token}\" is not numeric")
 
             # Verify value is within valid range
             if current_token < (-1*pow(2, 15)) or current_token > (pow(2, 15)-1):
-                raise Exception("Immediate value is out of range")
+                raise Exception(f"Immediate value \"{current_token}\" is out of range")
 
         # Verify shift amount is valid
         if token_type == "shamt":
@@ -137,27 +138,161 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
             try:
                 current_token = int(current_token)
             except ValueError:
-                raise Exception("Shift amount is not numeric")
+                raise Exception(f"Shift amount \"{current_token}\" not numeric")
 
             # Verify value is within valid range
             if current_token < 0 or current_token > (pow(2, 5) - 1):
-                raise Exception("Shift amount is out of range")
+                raise Exception(f"Shift amount \"{current_token}\" is out of range")
 
         # Verify label is valid
         if token_type == "label":
             if current_token not in symbol_table:
-                raise Exception("Label could not be located in symbol table")
+                raise Exception(f"Label \"{current_token}\" could not be located in symbol table")
 
     return instr_format_dict
 
 
 def assemble_r_instruction(tokenized_instr_list, instr_format_dict):
-    pass
+    """
+    Assembles the provided instruction (converts it to binary etc.)
+
+    R Format Instructions
+
+    Written format:
+    mnemonic   rd, rs, rt
+
+    Assembled format:
+    opcode  rs  rt  rd  shamt   funct
+    6       5   5   5   5       6
+
+    :param tokenized_instr_list: tokenized instruction list (list)
+    :param instr_format_dict: dictionary from instruction_list containing the formatting info for the given instruction
+    :return: binary string containing the final 32 bit instruction (string) (not prefixed with "0b")
+        The string will be of the form: "000000 00000 00000 00000 00000 000000"
+        can easily be changed to "00000000000000000000000000000000"
+    """
+    # Initialize and convert all parameters to binary strings
+    # with the proper length
+    opcode = sign_extend(bin(instr_format_dict.get("opcode")), 6)
+    rs = sign_extend(bin(0), 5)
+    rt = sign_extend(bin(0), 5)
+    rd = sign_extend(bin(0), 5)
+    shamt = sign_extend(bin(0), 5)
+    funct = sign_extend(bin(instr_format_dict.get("funct")), 6)
+    expected_format_list = instr_format_dict.get("format")
+
+    # For each expected token
+    for i, token_type in enumerate(expected_format_list):
+        # Current token is the token from the tokenized instruction list which should match the currently
+        # expected token type.
+        # (+1 because the tokenized instruction list starts with the mnemonic while the expected format list does not)
+        current_token = tokenized_instr_list[i+1]
+
+        # Update the appropriate value
+        match token_type:
+            case "rs":
+                rs = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
+            case "rt":
+                rt = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
+            case "rd":
+                rd = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
+            case "shamt":
+                shamt = sign_extend(bin(int(current_token)), 5)
+
+    # Return final binary string
+    # Note: slicing because bin() results in a string starting with "0b"...
+    # also using list comprehension
+    # Can remove space separator between tokens by changing " " to ""
+    return " ".join([x[2:] for x in [opcode, rs, rt, rd, shamt, funct]])
 
 
-def assemble_instruction(instr_line_list: list):
-    # Aliases
-    instr_type = instr_dict.get("type")
-    instr_opcode = instr_dict.get("opcode")
-    instr_funct = instr_dict.get("funct")
-    instr_format = instr_dict.get("format")
+def assemble_i_instruction(tokenized_instr_list, instr_format_dict):
+    """
+    Assembles the provided instruction (converts it to binary etc.)
+
+    I Format Instructions
+
+    Written format:
+    mnemonic    rt, imm(rs)     <-- for most I type
+    mnemonic    rs, rt, imm     <-- for beq and bne
+
+    Assembled format:
+    opcode  rs  rt  IMM
+    6       5   5   16
+
+    :param tokenized_instr_list: tokenized instruction list (list)
+    :param instr_format_dict: dictionary from instruction_list containing the formatting info for the given instruction
+    :return: binary string containing the final 32 bit instruction (string) (not prefixed with "0b")
+        The string will be of the form: "000000 00000 00000 0000000000000000"
+        can easily be changed to "00000000000000000000000000000000"
+    """
+    # TODO handle "imm(rs)" format
+    # TODO compute branch addresses for branch instructions
+    # TODO handle negative immediates properly (use 2's complement)
+
+    # Initialize and convert all parameters to binary strings
+    # with the proper length
+    opcode = sign_extend(bin(instr_format_dict.get("opcode")), 6)
+    rs = sign_extend(bin(0), 5)
+    rt = sign_extend(bin(0), 5)
+    imm = sign_extend(bin(0), 16)
+    expected_format_list = instr_format_dict.get("format")
+
+    # For each expected token
+    for i, token_type in enumerate(expected_format_list):
+        # Current token is the token from the tokenized instruction list which should match the currently
+        # expected token type.
+        # (+1 because the tokenized instruction list starts with the mnemonic while the expected format list does not)
+        current_token = tokenized_instr_list[i+1]
+
+        # Update the appropriate value
+        match token_type:
+            case "rs":
+                rs = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
+            case "rt":
+                rt = sign_extend(bin(dicts.REGISTER_DICT[current_token]), 5)
+            case "imm":
+                imm = sign_extend(bin(int(current_token)), 16)
+
+    # Return final binary string
+    # Note: slicing because bin() results in a string starting with "0b"...
+    # also using list comprehension
+    # Can remove space separator between tokens by changing " " to ""
+    return " ".join([x[2:] for x in [opcode, rs, rt, imm]])
+
+
+def assemble_j_instruction(tokenized_instr_list, instr_format_dict, symbol_table):
+    """
+    Assembles the provided instruction (converts it to binary etc.)
+
+    J Format Instructions
+
+    Written format:
+    mnemonic   label
+
+    Assembled format:
+    opcode  address
+    6       26
+
+    :param tokenized_instr_list: tokenized instruction list (list)
+    :param instr_format_dict: dictionary from instruction_list containing the formatting info for the given instruction
+    :param symbol_table: dictionary mapping symbols/labels to their respective addresses
+    :return: binary string containing the final 32 bit instruction (string) (not prefixed with "0b")
+        The string will be of the form: "000000 00000000000000000000000000"
+        can easily be changed to "00000000000000000000000000000000"
+    """
+    # Get opcode, convert to binary string, and extend to proper length
+    opcode = sign_extend(bin(instr_format_dict.get("opcode")), 6)
+
+    # Get the address the label portion points to from symbol table
+    address = symbol_table[tokenized_instr_list[1]]
+
+    # Convert address to binary string, and extend to proper length
+    address = sign_extend(bin(address), 26)
+
+    # Return final binary string
+    # Note: slicing because bin() results in a string starting with "0b"...
+    # also using list comprehension
+    # Can remove space separator between tokens by changing " " to ""
+    return " ".join([x[2:] for x in [opcode, address]])
+

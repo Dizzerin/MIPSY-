@@ -24,6 +24,48 @@ def open_with_error(filename, mode="r"):
             f.close()
 
 
+def twos_comp(value, bits):
+    """
+    TODO work on this function
+    Compute the 2's complement of int value
+
+    Going from a binary string is particularly easy...
+        binary_string = '1111' # or whatever... no '0b' prefix
+        out = twos_comp(int(binary_string,2), len(binary_string))
+
+    :param value: value to compute 2's complement of (int)
+    :param bits: number of bits in the value
+    :return: integer value
+    """
+    """"""
+    if (value & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+        value = value - (1 << bits)      # compute negative value
+    return value                         # return positive value as is
+
+
+def sign_extend(binary_string: bin, total_bits: int):
+    """
+    # TODO this function is currently very incorrect!
+    # for one the MSB is NOT the sign bit if it is an unsigned number
+    # for two, binary strings apparently start with "-0b" if they are negative instead of just "0b"
+    Sign extend a binary value up to set number of bits
+    Note: This is meant to take strings beginning with "0b" and it returns strings in the same format!
+
+    :param binary_string: binary string to extend (prefixed with "0b")
+    :param total_bits: total number of bits in resulting string (does not include 0b prefix)
+    :return: binary string with specified number of bits (prefixed with "0b")
+    """
+    # Chop off "0b" prefix
+    string = binary_string[2:]
+    # Get MSB bit
+    sign_bit_char = string[0]
+    # Extend
+    string = string.rjust(total_bits, sign_bit_char)
+    # Add "0b" prefix back on
+    result_binary_string = "0b" + string
+    return result_binary_string
+
+
 def get_line_type(line):
     """
     determines the type of the provided line

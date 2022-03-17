@@ -1,5 +1,4 @@
 import custom_types
-from custom_types import LineType
 from instruction_assemblers import *
 import helpers
 import dicts
@@ -11,8 +10,7 @@ import re
 START_ADDRESS = 7996
 
 
-# TODO remove o_file when no longer testing
-def process_first_pass(i_file, o_file):
+def process_first_pass(i_file):
     """
     Scans through the file line by line
     determines each line's type and saves it to the respective index in the line_type_list,
@@ -43,9 +41,6 @@ def process_first_pass(i_file, o_file):
         # Determine line type and fill out line_type_list
         line_type = helpers.get_line_type(line)
         line_type_list.append(line_type)
-
-        # TODO remove Temp
-        o_file.write("{} {}     {}".format(line_number, line_type, line))
 
         # Catch and report invalid lines at this stage
         if line_type == LineType.INVALID:
@@ -80,24 +75,34 @@ def process_first_pass(i_file, o_file):
 
 
 def process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_list):
-    # Read through line_type_list and only operate on lines that contain instructions
+    # Read entire input file
+    i_file.seek(0)                      # Reset read pointer to top of file
+    i_file_data = i_file.readlines()    # Read all the lines in the file (can't index to a specific line sadly)
+
+    # Read through line_type_list in order to only operate on lines that contain instructions
     for line_number, line_type in enumerate(line_type_list):
         # For every instruction line...
         if line_type in custom_types.ALL_INSTRUCTIONAL_TYPES:
-            # Goto that line in the input file
-            i_file.seek(line_number)
             # Grab the line from the file
-            line = i_file.readline()
+            line = i_file_data[line_number]
             # Set a flag indicating if the instruction starts with a label on the same line
             with_label = line_type in custom_types.ALL_INSTRUCTIONAL_LABEL_TYPES
             # Tokenize instruction
             tokenized_instr_list = tokenize_instruction(line, with_label)
             # Verify instruction
-            verify_instruction_tokens(tokenized_instr_list, symbol_table)
-            # Assemble instruction
-            # TODO call appropriate assembler (R type, I type.. etc.)
+            instr_format_dict = verify_instruction_tokens(tokenized_instr_list, symbol_table)
+
+            # Call appropriate instruction assembler
+            assembled_instr_str = "ERROR"
+            if line_type in [LineType.R_INSTRUCTION, LineType.LABEL_WITH_R_INSTR]:
+                assembled_instr_str = assemble_r_instruction(tokenized_instr_list, instr_format_dict)
+            if line_type in [LineType.I_INSTRUCTION, LineType.LABEL_WITH_I_INSTR]:
+                assembled_instr_str = assemble_i_instruction(tokenized_instr_list, instr_format_dict)
+            if line_type in [LineType.J_INSTRUCTION, LineType.LABEL_WITH_J_INSTR]:
+                assembled_instr_str = assemble_j_instruction(tokenized_instr_list, instr_format_dict, symbol_table)
 
             # Write to output file(s)
+            o_file.write(assembled_instr_str + "\n")
 
 
 def assemble(assembly_filename, assembled_filename):
@@ -130,11 +135,10 @@ def assemble(assembly_filename, assembled_filename):
                     # Begin assembly process
                     try:
                         # Perform first pass (build symbol table, determine line types, etc.)
-                        symbol_table, variable_table, line_type_list = process_first_pass(i_file, o_file)
+                        symbol_table, variable_table, line_type_list = process_first_pass(i_file)
 
                         # Perform second pass (assemble file)
                         process_second_pass(i_file, o_file, symbol_table, variable_table, line_type_list)
                     except Exception as error:
                         print(error)
     return
-

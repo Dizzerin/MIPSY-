@@ -28,7 +28,6 @@ so any invalid lines or operations will be caught and reported with helpful erro
   * [Helpful online resources/references](#helpful-online-resources-references)
 
 ## Quick use guide
-
 The quickest way to test this program is to simply run it as is.
 As currently configured, the program will read the [test.asm](Assembly%20Files/test.asm) assembly file,
 assemble it, and produce the [assembled.txt](Assembled%20Files/assembled.txt) output file.
@@ -54,12 +53,13 @@ during that process.  Once the both files are open and verified, the`assemble(..
 the following primary actions:
   1. Keeps track of/assigns each instruction its proper memory address
   2. Builds the symbol table (which maps labels to their respective memory addresses)
-     * Returns this table
+     * (Returns this table at the end)
   3. Determines what each line is in the assembly file
-     * Returns a list of tuples specifying each line's type (i.e. comment, I type instruction, etc.) and it associated
-         memory address if applicable (from step 1).
-  * TODO: Builds a variable table (which maps variables to their respective start addresses
-    in memory and specifies their length)
+     * (Returns a list of tuples specifying each line's type (i.e. comment, I type instruction, etc.) and it associated
+         memory address if applicable (from step 1) at the end)
+  4. Possible future step: Builds a variable table (which maps variables to their respective start addresses
+      in memory and specifies their length)
+     * (Returns this table at the end) 
 
 To determine each line's type, another function (`get_line_type(line)`) in the [helpers.py](helpers.py) file is called.
 This function uses a number of regex (regular expressions) to match each line and determine its type robustly.  This 
@@ -80,7 +80,16 @@ the following primary operations:
      operations on every instructional line:
      1. Tokenizes the line (separates it into its basic constituents and removes whitespace, comments, commas, etc.)
      2. Verifies the instructions tokens are valid
+        1. Verifies the instruction contains the expected number of tokens
+        2. Verifies the provided registers are valid registers (as specified in the `REGISTERS_DICT` in [dicts.py](dicts.py))
+        3. Verifies the rd register is not a protected/reserved register (such as $0, $zero, etc.)
+        4. Verifies the provided immediate values are numeric and within the range -2^15 and 2^15-1
+        5. Verifies the provided shift amounts are numeric and within the range 0 and 2^5-1
+        6. Verifies provided labels are valid
      3. Assembles the instruction into its final 32-bit binary representation (in ascii)
+        1. Computes addresses for special PC relative address in branch instructions
+        2. Computes addresses for jump instructions
+        3. etc.
      4. Writes the binary representation to the final output file (in ascii)
 
 ## Testing and verification
@@ -200,10 +209,10 @@ lhi,
 lho
 
 ## Possible future work
-* Better file organization?
 * Add GUI
 * Make input and output file selection easier
 * Verify output file doesn't exist if it is desired to prevent overwriting existing files
+* Verify input file is of type *.asm
 * Further testing and verification
 * Add support for currently unsupported instructions
 * Support variables (custom reserved blocks for data storage)

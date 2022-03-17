@@ -1,3 +1,4 @@
+from custom_types import LineType
 import custom_types
 from instruction_assemblers import *
 import helpers
@@ -5,8 +6,8 @@ import dicts
 import re
 
 # Random byte memory address where the first instruction will be placed in memory
-# Can be changed to anything, but note that it should be word aligned since
-# each instruction occupies 1 word
+# Can be changed to anything, but note that it should be word aligned (divisible by 4)
+# since each instruction occupies 1 word (4 bytes)
 START_ADDRESS = 7996
 
 

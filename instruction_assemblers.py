@@ -1,8 +1,6 @@
-from custom_types import LineType
 import instructions
 from helpers import sign_extend
 import dicts
-import re
 
 
 def tokenize_instruction(line, with_label):

@@ -108,7 +108,7 @@ def sign_extend(binary_string: bin, total_bits: int):
 
 def get_line_type(line):
     """
-    determines the type of the provided line
+    Determines the type of the provided line
     :param line: assembly file line
     :return: LineType (see LineType enum for options)
     :rtype: LineType

@@ -14,8 +14,18 @@ It is also quite robust as it accepts almost any form of whitespace formatting.
 Additionally, every line in the provided MIPS assembly file undergoes numerous verification steps,
 so any invalid lines or operations will be caught and reported with helpful error messages.it also performs a lot of verification and reports invalid instructions or operation found
 
-## Table of Contents
-
+## Table of contents
+- [MIPSYπ](#mipsy-)
+  * [Summary](#summary)
+  * [Table of contents](#table-of-contents)
+  * [Quick use guide](#quick-use-guide)
+  * [Description of basic operation](#description-of-basic-operation)
+  * [Testing and Verification](#testing-and-verification)
+  * [Supported whitespace formatting etc.](#supported-whitespace-formatting-etc)
+  * [Supported instruction list](#supported-instruction-list)
+  * [Unsupported instruction list](#unsupported-instruction-list)
+  * [Possible future work](#possible-future-work)
+  * [Helpful online resources/references](#helpful-online-resources-references)
 
 ## Quick use guide
 

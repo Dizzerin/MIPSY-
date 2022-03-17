@@ -145,6 +145,8 @@ def verify_instruction_tokens(tokenized_instr_list, symbol_table):
                 raise Exception(f"Shift amount \"{current_token}\" is out of range")
 
         # Verify label is valid
+        # TODO support numeric labels?
+        # TODO verify label is divisible by 4
         if token_type == "label":
             if current_token not in symbol_table:
                 raise Exception(f"Label \"{current_token}\" could not be located in symbol table")
@@ -288,7 +290,8 @@ def assemble_j_instruction(tokenized_instr_list, instr_format_dict, symbol_table
     address = symbol_table[tokenized_instr_list[1]]
 
     # Convert address to binary string, and extend to proper length
-    address = sign_extend(bin(address), 26)
+    # Note: the address is divided by 4 since MIPS represents it as a word address which later gets right shifted twice
+    address = sign_extend(bin(int(address/4)), 26)
 
     # Return final binary string
     # Note: slicing because bin() results in a string starting with "0b"...

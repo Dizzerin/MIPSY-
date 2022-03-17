@@ -24,41 +24,81 @@ def open_with_error(filename, mode="r"):
             f.close()
 
 
-def twos_comp(value, bits):
+def get_twos_complement(binary_string: str):
     """
-    TODO work on this function
     Compute the 2's complement of int value
 
-    Going from a binary string is particularly easy...
-        binary_string = '1111' # or whatever... no '0b' prefix
-        out = twos_comp(int(binary_string,2), len(binary_string))
+    Note: Currently this expects and returns strings without any prefix, i.e. "01011"
+          NO "0b" prefix
 
-    :param value: value to compute 2's complement of (int)
-    :param bits: number of bits in the value
-    :return: integer value
+    :param binary_string: string with value to compute 2's complement of (int)
+    :return: string with 2's complement representation
     """
-    """"""
-    if (value & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
-        value = value - (1 << bits)      # compute negative value
-    return value                         # return positive value as is
+    n = len(binary_string)
+
+    # Traverse the string to get first
+    # '1' from the last of string
+    i = n - 1
+    while i >= 0:
+        if binary_string[i] == '1':
+            break
+
+        i -= 1
+
+    # If there exists no '1' concatenate 1
+    # at the starting of string
+    if i == -1:
+        return '1' + binary_string
+
+    # Continue traversal after the
+    # position of first '1'
+    k = i - 1
+    while k >= 0:
+
+        # Just flip the values
+        if binary_string[k] == '1':
+            binary_string = list(binary_string)
+            binary_string[k] = '0'
+            binary_string = ''.join(binary_string)
+        else:
+            binary_string = list(binary_string)
+            binary_string[k] = '1'
+            binary_string = ''.join(binary_string)
+
+        k -= 1
+
+    # return the modified string
+    return binary_string
 
 
 def sign_extend(binary_string: bin, total_bits: int):
     """
-    # TODO this function is currently very incorrect!
-    # for one the MSB is NOT the sign bit if it is an unsigned number
-    # for two, binary strings apparently start with "-0b" if they are negative instead of just "0b"
     Sign extend a binary value up to set number of bits
-    Note: This is meant to take strings beginning with "0b" and it returns strings in the same format!
+    Note: This expects strings beginning with either "-0b" or "0b" based on whether it is negative or not
+        If the value is negative, it takes the 2's complement and returns it without the "-0b" prefix
+        All strings returned contain the "0b" prefix, and all are "positive" in the sense they use
+        2's complement representation
 
-    :param binary_string: binary string to extend (prefixed with "0b")
+    :param binary_string: binary string to extend (prefixed with "0b" or "-0b")
     :param total_bits: total number of bits in resulting string (does not include 0b prefix)
     :return: binary string with specified number of bits (prefixed with "0b")
     """
-    # Chop off "0b" prefix
-    string = binary_string[2:]
-    # Get MSB bit
-    sign_bit_char = string[0]
+    negative = False
+
+    # Determine if it is negative (binary strings are prefixed with "-0b" if negative)
+    # If it is negative...
+    if binary_string[0] == "-":
+        negative = True
+        # Chop off "-0b" prefix
+        string = binary_string[3:]
+        # Convert to 2's complement representation
+        string = get_twos_complement(string)
+    # else not negative
+    else:
+        # Chop off "0b" prefix
+        string = binary_string[2:]
+
+    sign_bit_char = "0" if not negative else "1"
     # Extend
     string = string.rjust(total_bits, sign_bit_char)
     # Add "0b" prefix back on

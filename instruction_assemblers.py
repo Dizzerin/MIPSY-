@@ -265,7 +265,7 @@ def assemble_i_instruction(tokenized_instr_list, instr_format_dict, symbol_table
                 # Get the address the label portion points to from symbol table
                 address = symbol_table[current_token]
 
-                # Computer proper branch address
+                # Compute proper branch address
                 # Note: The immediate value stored for a branch instruction is 2's complement, word aligned, and
                 # used as a PC relative address, and the PC is incremented early, so its really PC+4 (or the next
                 # instruction address.

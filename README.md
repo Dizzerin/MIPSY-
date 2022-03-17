@@ -86,10 +86,14 @@ the following primary operations:
         4. Verifies the provided immediate values are numeric and within the range -2^15 and 2^15-1
         5. Verifies the provided shift amounts are numeric and within the range 0 and 2^5-1
         6. Verifies provided labels are valid
+        7. Raises an exception with a message explaining the error whenever one of the verification tests
+           fails
      3. Assembles the instruction into its final 32-bit binary representation (in ascii)
         1. Computes addresses for special PC relative address in branch instructions
         2. Computes addresses for jump instructions
-        3. etc.
+        3. Sign extends values as necessary
+        4. Computes the 2's complement for immediates
+        5. etc.
      4. Writes the binary representation to the final output file (in ascii)
 
 ## Testing and verification
